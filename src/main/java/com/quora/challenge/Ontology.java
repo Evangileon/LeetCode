@@ -1,15 +1,17 @@
 package com.quora.challenge;
 
 
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
 import java.util.*;
 
 import static java.lang.Math.min;
 import static java.lang.Math.max;
 
 public class Ontology {
+
+    private Graph graph;
+    private List<Pair> questions;
+    private SegmentTree segmentTree;
 
     private static class Node {
         int val;
@@ -50,20 +52,20 @@ public class Ontology {
         List<Integer> roots;
         List<Node> nodes;
 
-        // msg is ordered set
+        // questions is sorted
         SegmentTree(int N, Iterable<Pair> questions) {
-            roots = new ArrayList<>();
-            nodes = new ArrayList<>();
+            roots = new ArrayList<>(N);
+            nodes = new ArrayList<>(N);
             roots.add(build(0, N - 1));
 
             int i = 0;
             for (Pair pair : questions) {
-                roots.add(modify(roots.get(i), 0, N - 1, pair.topicId, 1));
+                roots.add(update(roots.get(i), 0, N - 1, pair.topicId, 1));
                 i++;
             }
         }
 
-        int generateNode(int val, int left, int right) {
+        int newNode(int val, int left, int right) {
             Node node = new Node(val, left, right);
             nodes.add(node);
             return nodes.size() - 1;
@@ -78,68 +80,68 @@ public class Ontology {
 
         int build(int l, int r) {
             if (l == r) {
-                return generateNode(0, -1, -1);
+                return newNode(0, -1, -1);
             }
-            int m = (l + r) / 2;
+            int m = l + (r - l) / 2;
             int left = build(l, m);
             int right = build(m + 1, r);
             int val = getVal(left) + getVal(right);
 
-            return generateNode(val, left, right);
+            return newNode(val, left, right);
         }
 
-        int modify(int at, int l, int r, int idx, int val) {
+        int update(int at, int l, int r, int idx, int val) {
             if (l == r) {
-                return generateNode(nodes.get(at).val + val, -1, -1);
+                return newNode(nodes.get(at).val + val, -1, -1);
             }
-            int m = (l + r) / 2;
+            int m = l + (r - l) / 2;
             int left, right;
             if (idx <= m) {
-                left = modify(nodes.get(at).left, l, m, idx, val);
+                left = update(nodes.get(at).left, l, m, idx, val);
                 right = nodes.get(at).right;
             } else {
                 left = nodes.get(at).left;
-                right = modify(nodes.get(at).right, m + 1, r, idx, val);
+                right = update(nodes.get(at).right, m + 1, r, idx, val);
             }
             int s = getVal(left) + getVal(right);
-            return generateNode(s, left, right);
+            return newNode(s, left, right);
         }
 
-        int sum(int at, int l, int r, int ql, int qr) {
+        int querySum(int at, int l, int r, int ql, int qr) {
             if (ql > qr || at == -1) {
                 return 0;
             }
             if (l == ql && r == qr) {
                 return getVal(at);
             }
-            int m = (l + r) / 2;
-            int s1 = sum(nodes.get(at).left, l, m, ql, min(qr, m));
-            int s2 = sum(nodes.get(at).right, m + 1, r, max(m + 1, ql), qr);
+            int m = l + (r - l) / 2;
+            int s1 = querySum(nodes.get(at).left, l, m, ql, min(qr, m));
+            int s2 = querySum(nodes.get(at).right, m + 1, r, max(m + 1, ql), qr);
             return s1 + s2;
         }
     }
 
     private static class Graph {
-        List<List<Integer>> g;
-        Map<String, Integer> ids;
+        private List<List<Integer>> adjs;
+        private Map<String, Integer> ids;
 
-        List<Integer> tin;
-        List<Integer> tout;
+        private List<Integer> startTime;
+        private List<Integer> endTime;
 
-        private int tm = -1;
+        private int t = -1;
 
         Graph(int N) {
             ids = new HashMap<>(N);
-            g = new ArrayList<>(N + 5);
-            tin = new ArrayList<>(N);
-            tout = new ArrayList<>(N);
+            adjs = new ArrayList<>(N + 5);
+            startTime = new ArrayList<>(N);
+            endTime = new ArrayList<>(N);
         }
 
 
         Graph parse(String treeStr) {
             StringTokenizer st = new StringTokenizer(treeStr, " ");
             String token;
-            tm = -1;
+            t = -1;
 
             Deque<Integer> stack = new ArrayDeque<>();
             int parent = -1;
@@ -175,21 +177,21 @@ public class Ontology {
                         if (!this.ids.containsKey(token)) {
                             id = index++;
                             this.ids.put(token, id);
-                            this.g.add(new ArrayList<Integer>());
+                            this.adjs.add(new ArrayList<Integer>());
                         } else {
                             id = this.ids.get(token);
                         }
 
                         if (parent != -1) {
-                            this.g.get(parent).add(id);
-                            this.g.get(id).add(parent);
+                            this.adjs.get(parent).add(id);
+                            this.adjs.get(id).add(parent);
                         }
                         prev = id;
                         break;
                 }
             }
 
-            buildRangeDFS(0, -1);
+            dfs(0, -1);
 
             return this;
         }
@@ -201,19 +203,20 @@ public class Ontology {
             list.set(index, val);
         }
 
-        void buildRangeDFS(int at, int from) {
-            setList(this.tin, at, (++tm));
+        private void dfs(int at, int from) {
+            setList(this.startTime, at, (++t));
 
-            for (int to : this.g.get(at)) {
+            for (int to : this.adjs.get(at)) {
                 if (to != from) {
-                    buildRangeDFS(to, at);
+                    dfs(to, at);
                 }
             }
 
-            setList(this.tout, at, tm);
+            setList(this.endTime, at, t);
         }
     }
 
+    // return betweem 0, size - 1
     public <T extends Comparable<T>> int binarySearchFloor(List<T> list, T target) {
         int l = 0;
         int r = list.size() - 1;
@@ -249,10 +252,6 @@ public class Ontology {
         return 0;
     }
 
-    private Graph graph;
-    private List<Pair> questions;
-    private SegmentTree segmentTree;
-
     public void buildSegmentTree(Graph graph, List<Pair> questions) {
         Collections.sort(questions);
         this.graph = graph;
@@ -270,62 +269,64 @@ public class Ontology {
             return 0;
         }
 
-        int cnt1 = segmentTree.sum(segmentTree.roots.get(idx2), 0, graph.ids.size() - 1, graph.tin.get(cid), graph.tout.get(cid));
-        int cnt2 = segmentTree.sum(segmentTree.roots.get(idx), 0, graph.ids.size() - 1, graph.tin.get(cid), graph.tout.get(cid));
+        int cnt1 = segmentTree.querySum(segmentTree.roots.get(idx2), 0, graph.ids.size() - 1,
+                graph.startTime.get(cid), graph.endTime.get(cid));
+        int cnt2 = segmentTree.querySum(segmentTree.roots.get(idx), 0, graph.ids.size() - 1,
+                graph.startTime.get(cid), graph.endTime.get(cid));
 
         return cnt1 - cnt2;
     }
 
+    public static String nextLine(BufferedReader in) {
+        String tmp = null;
+        try {
+            while ((tmp = in.readLine()) == null || tmp.length() == 0) {
+            } // handle \r\n
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return tmp;
+    }
 
-    public static void main(String[] args) throws IOException {
+
+    public static void main(String[] args) {
         int N, M, K;
 
-        Scanner file = new Scanner(System.in);
-        BufferedReader in = new BufferedReader(new FileReader(file.nextLine()));
+        BufferedReader in = null;
+        in = new BufferedReader(new InputStreamReader(System.in));
 
         //Parse topics
         String tmp;
-        while ((tmp = in.readLine()) == null || tmp.length() == 0) {
-        }
+        tmp = nextLine(in);
         N = Integer.parseInt(tmp);
         String tree;
-        while ((tree = in.readLine()) == null || tree.length() == 0) {
-        }
+        tree = nextLine(in);
 
         Ontology ontology = new Ontology();
 
         Graph graph = new Graph(N);
         graph.parse(tree);
 
-        // Parse queries
-        while ((tmp = in.readLine()) == null || tmp.length() == 0) {
-        }
+        // Parse questions
+        tmp = nextLine(in);
         M = Integer.parseInt(tmp);
         List<Pair> questions = new ArrayList<>();
         String line;
 
         for (int i = 0; i < M; i++) {
-            while ((line = in.readLine()) == null || line.length() == 0) {
-            }
-            String category = line.substring(0, line.indexOf(':'));
+            line = nextLine(in);
+            String topic = line.substring(0, line.indexOf(':'));
             String body = line.substring(line.indexOf(':') + 2);
-            questions.add(new Pair(body, graph.ids.get(category)));
+            questions.add(new Pair(body, graph.ids.get(topic)));
         }
 
         ontology.buildSegmentTree(graph, questions);
 
-        //use segment tree to record query count -- segmented by topic ids
-        //use persistent data structure(tree) to record the count(up to current version)
-        // -- each msg is a new version to update count
-
-        // put queries to persistent tree
-        while ((tmp = in.readLine()) == null || tmp.length() == 0) {
-        }
+        tmp = nextLine(in);
         K = Integer.parseInt(tmp);
 
         for (int i = 0; i < K; i++) {
-            while ((line = in.readLine()) == null || line.length() == 0) {
-            }
+            line = nextLine(in);
 
             String topic = line.substring(0, line.indexOf(' '));
             String body = line.substring(line.indexOf(' ') + 1);

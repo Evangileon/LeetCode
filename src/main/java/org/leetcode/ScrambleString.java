@@ -24,8 +24,10 @@ public class ScrambleString {
                     }
 
                     int h = k / 2;
-                    st[i][j][k] = (st[i][j][h] && st[i + h][j + h][h])
-                            || (st[i][j + h][h] && st[i + h][j][h]);
+                    st[i][j][k] = (st[i][j][h] && st[i + h][j + h][k - h])
+                            || (st[i][j][k - h] && st[i + h][j + h][h])
+                            || (st[i][j + h][h] && st[i + h][j][k - h])
+                            || (st[i][j + h][k - h] && st[i + h][j][h]);
                 }
             }
         }
@@ -35,8 +37,8 @@ public class ScrambleString {
 
     public static void main(String[] args) {
         ScrambleString solution = new ScrambleString();
-        String s1 = "abb";
-        String s2 = "bba";
+        String s1 = "abc";
+        String s2 = "bac";
 
         System.out.println(String.format("%s, %s: %b", s1, s2, solution.isScramble(s1, s2)));
     }
