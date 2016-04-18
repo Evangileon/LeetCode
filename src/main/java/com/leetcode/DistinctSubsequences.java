@@ -1,4 +1,4 @@
-package org.leetcode;
+package com.leetcode;
 
 public class DistinctSubsequences {
 

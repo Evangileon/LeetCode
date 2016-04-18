@@ -2,6 +2,8 @@
 ### Java template
 *.class
 
+*.out
+
 bin/
 .settings/
 .idea/

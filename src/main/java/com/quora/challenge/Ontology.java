@@ -4,10 +4,9 @@ package com.quora.challenge;
 import java.io.*;
 import java.util.*;
 
-import static java.lang.Math.min;
-import static java.lang.Math.max;
-
 public class Ontology {
+
+    private static final int LN = 19;
 
     private Graph graph;
     private List<Pair> questions;
@@ -107,6 +106,37 @@ public class Ontology {
             return newNode(s, left, right);
         }
 
+        int pa(int u, int v) {
+            return graph.adjs.get(u).get(v);
+        }
+
+        int LCA(int u, int v) {
+//            if(depth[u] < depth[v])
+//                return LCA(v, u);
+
+            //int diff = depth[u] - depth[v];
+
+            int diff = 1;
+
+            for (int i = 0; i < LN; i++) {
+                if (((diff >> i) & 1) == 1) {
+                    u = pa(u, i);
+                }
+            }
+
+            if (u != v) {
+                for (int i = LN - 1; i >= 0; i--) {
+                    if (pa(u, i) != pa(v, i)) {
+                        u = pa(u, i);
+                        v = pa(v, i);
+                    }
+                }
+                u = pa(u, 0);
+            }
+
+            return u;
+        }
+
         int querySum(int at, int l, int r, int ql, int qr) {
             if (ql > qr || at == -1) {
                 return 0;
@@ -115,10 +145,12 @@ public class Ontology {
                 return getVal(at);
             }
             int m = l + (r - l) / 2;
-            int s1 = querySum(nodes.get(at).left, l, m, ql, min(qr, m));
-            int s2 = querySum(nodes.get(at).right, m + 1, r, max(m + 1, ql), qr);
+            int s1 = querySum(nodes.get(at).left, l, m, ql, Math.min(qr, m));
+            int s2 = querySum(nodes.get(at).right, m + 1, r, Math.max(m + 1, ql), qr);
             return s1 + s2;
         }
+
+        //int querySum(int start, )
     }
 
     private static class Graph {
