@@ -8,7 +8,10 @@ import java.io.InputStreamReader;
 public class MaxClique {
     private int isKr1Free(int n, int m, int r1) {
         int r = r1 - 1;
-        return ((r - 1) * n * n - 2 * r * m);
+        if (r == 0) {
+            return 0;
+        }
+        return ((r - 1) * n * n - 2 * r * m) / (2 * r);
     }
 
     int maxClique(int n, int m) {
