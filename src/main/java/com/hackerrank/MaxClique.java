@@ -6,9 +6,12 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 
 public class MaxClique {
-    private int isKr1Free(int n, int m, int r1) {
+    private int atMostKr1Free(int n, int r1) {
         int r = r1 - 1;
-        return ((r - 1) * n * n - 2 * r * m);
+        if (r == 0) {
+            return 0;
+        }
+        return (r - 1) * n * n / (2 * r);
     }
 
     int maxClique(int n, int m) {
@@ -16,7 +19,7 @@ public class MaxClique {
             return n;
         }
 
-        int l = 1;
+        int l = 2;
         int upper = Math.min(n, m);
         int r = upper;
         int mid;
@@ -24,9 +27,9 @@ public class MaxClique {
         while (l <= r) {
             mid = l + (r - l) / 2;
 
-            if (isKr1Free(n, m, mid) > 0) {
+            if (atMostKr1Free(n, mid) > m) {
                 r = mid - 1;
-            } else if (mid < upper && isKr1Free(n, m, mid + 1) <= 0) {
+            } else if (mid < upper && atMostKr1Free(n, mid + 1) <= m) {
                 l = mid + 1;
             } else {
                 return mid;
